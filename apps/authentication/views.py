@@ -7,9 +7,17 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework_simplejwt.exceptions import TokenError
 
-from common.constants import REDIS_JWT_BLACKLIST_PREFIX
+from common.constants import REDIS_JWT_BLACKLIST_PREFIX, REDIS_VKEY_PREFIX
 from common.redis_client import get_redis
-from .serializers import LoginSerializer, UserSerializer, RefreshTokenSerializer, TokenResponseSerializer
+from .models import VirtualAPIKey
+from .serializers import (
+    LoginSerializer,
+    UserSerializer,
+    RefreshTokenSerializer,
+    TokenResponseSerializer,
+    VirtualAPIKeySerializer,
+    CreateVirtualAPIKeySerializer,
+)
 
 
 class LoginView(APIView):
@@ -103,3 +111,64 @@ class LogoutView(APIView):
             )
 
         return Response({'message': 'Successfully logged out.'}, status=status.HTTP_200_OK)
+
+
+class VirtualAPIKeyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='가상 API 키 목록 조회',
+        responses={200: VirtualAPIKeySerializer(many=True)},
+        tags=['API Keys'],
+    )
+    def get(self, request):
+        keys = VirtualAPIKey.objects.filter(user=request.user, is_active=True)
+        serializer = VirtualAPIKeySerializer(keys, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary='가상 API 키 생성',
+        request=CreateVirtualAPIKeySerializer,
+        responses={201: VirtualAPIKeySerializer},
+        tags=['API Keys'],
+    )
+    def post(self, request):
+        serializer = CreateVirtualAPIKeySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        vkey = VirtualAPIKey.objects.create(
+            user=request.user,
+            name=serializer.validated_data.get('name', 'Default Key'),
+            key=VirtualAPIKey.generate_key(),
+        )
+        return Response(VirtualAPIKeySerializer(vkey).data, status=status.HTTP_201_CREATED)
+
+
+class VirtualAPIKeyDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary='가상 API 키 비활성화',
+        responses={
+            200: {'type': 'object', 'properties': {'message': {'type': 'string'}}},
+            404: {'type': 'object', 'properties': {'error': {'type': 'string'}}},
+        },
+        tags=['API Keys'],
+    )
+    def delete(self, request, pk):
+        try:
+            vkey = VirtualAPIKey.objects.get(pk=pk, user=request.user)
+        except VirtualAPIKey.DoesNotExist:
+            return Response(
+                {'error': 'API key not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Deactivate and remove from Redis cache
+        vkey.is_active = False
+        vkey.save(update_fields=['is_active'])
+
+        r = get_redis()
+        r.delete(f"{REDIS_VKEY_PREFIX}{vkey.key}")
+
+        return Response({'message': 'API key deactivated.'}, status=status.HTTP_200_OK)

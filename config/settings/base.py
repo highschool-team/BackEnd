@@ -27,6 +27,7 @@ DJANGO_APPS = [
 ]
 
 THIRD_PARTY_APPS = [
+    'django_prometheus',
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
@@ -48,6 +49,7 @@ LOCAL_APPS = [
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -57,6 +59,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'common.middleware.PipelineTimingMiddleware',
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
 LOGGING = {
@@ -138,6 +141,7 @@ AUTH_USER_MODEL = 'authentication.User'
 # Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'apps.authentication.authentication.VirtualAPIKeyAuthentication',
         'apps.authentication.authentication.RedisBlacklistJWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
@@ -189,6 +193,9 @@ SPECTACULAR_SETTINGS = {
 
 # AI Mock Mode
 AI_MOCK_MODE = env.bool('AI_MOCK_MODE', default=False)
+
+# Slack
+SLACK_WEBHOOK_URL = env('SLACK_WEBHOOK_URL', default='')
 
 # Celery
 CELERY_BROKER_URL = REDIS_URL

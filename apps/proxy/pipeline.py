@@ -94,6 +94,10 @@ def publish_alert(r, alert) -> None:
     }
     r.publish(REDIS_ALERTS_CHANNEL, json.dumps(payload))
 
+    # Slack 비동기 전송 (Celery)
+    from apps.alerts.tasks import send_slack_alert
+    send_slack_alert.delay(payload)
+
 
 def _ip_in_cidrs(client_ip: str, cidrs: list) -> bool:
     try:

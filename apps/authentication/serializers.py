@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import User
+from .models import User, VirtualAPIKey
 
 
 class LoginSerializer(serializers.Serializer):
@@ -39,3 +39,14 @@ class TokenResponseSerializer(serializers.Serializer):
 
 class RefreshTokenSerializer(serializers.Serializer):
     refresh_token = serializers.CharField()
+
+
+class VirtualAPIKeySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VirtualAPIKey
+        fields = ['id', 'name', 'key', 'created_at', 'last_used_at', 'is_active']
+        read_only_fields = ['id', 'key', 'created_at', 'last_used_at']
+
+
+class CreateVirtualAPIKeySerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=100, default='Default Key')

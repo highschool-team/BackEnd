@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
@@ -60,3 +61,24 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
+
+
+class VirtualAPIKey(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    key = models.CharField(max_length=68, unique=True)  # fng_ + 64 hex chars
+    user = models.ForeignKey('authentication.User', on_delete=models.CASCADE, related_name='api_keys')
+    name = models.CharField(max_length=100, default='Default Key')
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'virtual_api_keys'
+        ordering = ['-created_at']
+
+    @staticmethod
+    def generate_key():
+        return f"fng_{secrets.token_hex(32)}"
+
+    def __str__(self):
+        return f"{self.name} ({self.user.email})"

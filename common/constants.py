@@ -43,6 +43,7 @@ REDIS_ALERTS_CHANNEL = 'finops:alerts'
 REDIS_PROVISIONING_CHANNEL_PREFIX = 'finops:provisioning:'
 REDIS_TASK_KEY_PREFIX = 'finops:task:'
 REDIS_JWT_BLACKLIST_PREFIX = 'finops:jwt:blacklist:'
+REDIS_VKEY_PREFIX = 'finops:vkey:'
 
 # Redis pipeline keys (format strings)
 REDIS_IP_ALLOWLIST_KEY = 'finops:ip:allowlist:{team_id}'
